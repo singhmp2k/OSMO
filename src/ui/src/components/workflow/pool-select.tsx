@@ -14,20 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-/**
- * PoolSelect - Lazy-loading pool selection for resubmit drawer.
- *
- * Uses Popover + Command (cmdk) instead of Radix Select to avoid the
- * aria-hidden conflict with ResizablePanel. Radix Select sets aria-hidden
- * on ancestor elements when opened, which conflicts with the panel's
- * focus management. Popover does not exhibit this behavior.
- *
- * Lazy-loading strategy:
- * 1. On mount: Show preselected pool (workflow's original pool)
- * 2. On popover open: Fetch ALL pools, show loading indicator
- * 3. Pools load: Enable search via cmdk, populate list
- */
-
 "use client";
 
 import { useState, useMemo, memo, useCallback, useId } from "react";
@@ -44,34 +30,19 @@ import {
 import { Button } from "@/components/shadcn/button";
 import type { Pool } from "@/lib/api/adapter/types";
 import { cn } from "@/lib/utils";
-import { PoolStatusBadge } from "@/features/workflows/detail/components/resubmit/pool-status-badge";
+import { PoolStatusBadge } from "@/components/workflow/pool-status-badge";
 
 export interface PoolSelectProps {
-  /** Currently selected pool name (from workflow's original pool) */
   value: string;
-  /** Callback when pool selection changes */
   onValueChange: (poolName: string) => void;
-  /** Selected pool metadata (for displaying badge in trigger) */
+  /** Pool metadata for displaying status badge in the trigger button */
   selectedPool?: Pool;
-  /** All pools data (if already fetched by parent) */
+  /** When provided, populates the dropdown list; undefined shows a loading state */
   allPools?: Pool[];
-  /** Callback when dropdown open state changes (for parent to trigger all-pools fetch) */
+  /** Notifies parent when dropdown opens (to trigger lazy pool fetch) */
   onDropdownOpenChange?: (isOpen: boolean) => void;
 }
 
-/**
- * PoolSelect component using Popover + Command (cmdk) combobox pattern.
- *
- * This avoids the Radix Select aria-hidden conflict with ResizablePanel.
- * Radix Select sets aria-hidden on ancestor elements (including the panel),
- * which causes browser errors and immediately closes the dropdown. Popover
- * is inherently non-modal and does not modify ancestor aria attributes.
- *
- * Loading strategy:
- * 1. Initial render: Show preselected pool (passed via selectedPool prop)
- * 2. Popover open: Notify parent to trigger all-pools fetch
- * 3. Use pools from parent (avoids redundant queries)
- */
 export const PoolSelect = memo(function PoolSelect({
   value,
   onValueChange,
@@ -90,7 +61,6 @@ export const PoolSelect = memo(function PoolSelect({
     [onDropdownOpenChange],
   );
 
-  // Use pools from parent if available
   const pools = useMemo(() => allPools ?? [], [allPools]);
   const isLoading = !allPools && isOpen;
 
