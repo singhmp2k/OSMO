@@ -69,7 +69,7 @@ function PriorityBadge({ value, colorClass }: { value: number; colorClass: strin
   );
 }
 
-function buildWorkflowsUrl(row: OccupancyFlatRow, groupBy: OccupancyGroupBy, searchChips: SearchChip[]): string {
+export function buildWorkflowsUrl(row: OccupancyFlatRow, groupBy: OccupancyGroupBy, searchChips: SearchChip[]): string {
   const params: string[] = [];
   if (row._type === "parent") {
     params.push(`f=${groupBy}:${encodeURIComponent(row.key)}`);
@@ -200,7 +200,8 @@ export function createOccupancyColumns(
           return (
             <Link
               href={href}
-              className="hover:text-primary pl-2 text-sm text-zinc-600 underline decoration-zinc-400/50 underline-offset-2 transition-colors hover:decoration-current dark:text-zinc-400"
+              className="pl-2 text-sm text-zinc-600 dark:text-zinc-400"
+              tabIndex={-1}
               onClick={(e) => e.stopPropagation()}
             >
               {original.key}
