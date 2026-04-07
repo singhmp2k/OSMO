@@ -184,14 +184,19 @@ class WorkflowServiceTestCase(
         # Assert
         self.assertEqual(response.status_code, 200)
         self.assertIn('name', response.json())
+        db = postgres.PostgresConnector.get_instance()
         workflow_obj = workflow.Workflow.fetch_from_db(
-            postgres.PostgresConnector.get_instance(),
-            response.json()['name'],
+            db, response.json()['name'],
         )
         self.assertEqual(workflow_obj.status, workflow.WorkflowStatus.PENDING)
         self.assertTrue(
             self.is_workflow_job_in_queue(f'dedupe:{workflow_obj.workflow_uuid}-submit'),
         )
+
+        # Verify groups and tasks were batch-inserted
+        self.assertEqual(len(workflow_obj.groups), 2)
+        total_tasks = sum(len(g.tasks) for g in workflow_obj.groups)
+        self.assertEqual(total_tasks, 2)
 
     def test_concurrent_requests_exceed_pool_size(self):
         """
@@ -296,7 +301,8 @@ class WorkflowServiceTestCase(
             f'Expected {num_concurrent_requests} successful workflows',
         )
 
-        # Verify each workflow is in PENDING status
+        # Verify each workflow is in PENDING status with correct group/task counts
+        db = postgres.PostgresConnector.get_instance()
         for request_id, status_code, response_json in successful_workflows:
             self.assertEqual(
                 status_code,
@@ -304,13 +310,24 @@ class WorkflowServiceTestCase(
                 f'Workflow {request_id} should have status code 200, got {status_code}',
             )
             workflow_obj = workflow.Workflow.fetch_from_db(
-                postgres.PostgresConnector.get_instance(),
-                response_json['name'],
+                db, response_json['name'],
             )
             self.assertEqual(
                 workflow_obj.status,
                 workflow.WorkflowStatus.PENDING,
                 f'Workflow {request_id} should be in PENDING status',
+            )
+            # Verify batch insert produced exactly 1 group with 1 task (no duplicates)
+            self.assertEqual(
+                len(workflow_obj.groups),
+                1,
+                f'Workflow {request_id} should have exactly 1 group, '
+                f'got {len(workflow_obj.groups)}',
+            )
+            self.assertEqual(
+                len(workflow_obj.groups[0].tasks),
+                1,
+                f'Workflow {request_id} group should have exactly 1 task',
             )
 
 
